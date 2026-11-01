@@ -1,5 +1,7 @@
+<html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="darkreader-lock">
 <title>SkyBlock Event Calendar</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
@@ -200,13 +202,13 @@ const MONTHS = ["Early Spring","Spring","Late Spring","Early Summer","Summer","L
 
 // Recurring yearly events: month index (0-11), start day (1-31), length in SkyBlock days.
 const EVENTS = [
-  { id: "hoppity", name: "Hoppity's Hunt",    color: "var(--green)",  mc: "a", at: [[0, 1, 93]] },
-  { id: "zoo",     name: "Traveling Zoo",     color: "var(--yellow)", mc: "e", at: [[3, 1, 3, "Summer Traveling Zoo"], [9, 1, 3, "Winter Traveling Zoo"]] },
-  { id: "elect",   name: "Election Results",  color: "var(--red)",    mc: "c", at: [[2, 27, 1]] },
-  { id: "booth",   name: "Election Opens",    color: "var(--red)",    mc: "c", at: [[5, 27, 1]] },
-  { id: "spooky",  name: "Spooky Festival",   color: "var(--gold)",   mc: "6", at: [[8, 29, 3]] },
-  { id: "jerry",   name: "Season of Jerry",   color: "var(--aqua)",   mc: "b", at: [[11, 24, 3]] },
-  { id: "newyear", name: "New Year Celebration", color: "var(--pink)", mc: "d", at: [[11, 29, 3]] },
+  { id: "hoppity", name: "Hoppity's Hunt",    short: "Hoppity", color: "var(--green)",  mc: "a", at: [[0, 1, 93]] },
+  { id: "zoo",     name: "Traveling Zoo",     color: "var(--yellow)", mc: "e", at: [[3, 1, 3, "Summer Traveling Zoo", "Zoo ☀"], [9, 1, 3, "Winter Traveling Zoo", "Zoo ❄"]] },
+  { id: "elect",   name: "Election Results",  short: "Elec. results", color: "var(--red)",    mc: "c", at: [[2, 27, 1]] },
+  { id: "booth",   name: "Election Opens",    short: "Elec. opens", color: "var(--red)",    mc: "c", at: [[5, 27, 1]] },
+  { id: "spooky",  name: "Spooky Festival",   short: "Spooky", color: "var(--gold)",   mc: "6", at: [[8, 29, 3]] },
+  { id: "jerry",   name: "Season of Jerry",   short: "Jerry", color: "var(--aqua)",   mc: "b", at: [[11, 24, 3]] },
+  { id: "newyear", name: "New Year Celebration", short: "New Year", color: "var(--pink)", mc: "d", at: [[11, 29, 3]] },
 ];
 
 let hidden = new Set();
@@ -219,10 +221,10 @@ function occurrences(from, to) {
     const ys = EPOCH + y * YEAR;
     for (const e of EVENTS) {
       if (hidden.has(e.id)) continue;
-      for (const [m, d, len, label] of e.at) {
+      for (const [m, d, len, label, short] of e.at) {
         const start = ys + m * MONTH + (d - 1) * DAY, end = start + len * DAY;
         if (e.within && (end <= e.within[0] || start >= e.within[1])) continue;
-        if (end > from && start < to) out.push({ ...e, name: label || e.name, start, end, year: y + 1 });
+        if (end > from && start < to) out.push({ ...e, name: label || e.name, short: short || e.short, start, end, year: y + 1 });
       }
     }
   }
@@ -316,7 +318,7 @@ function renderMonth() {
     const today = occ.filter(o => o.end > d0 && o.start < d1);
     const evs = today.map(o => {
       const label = o.start >= +d0 ? fmtTime(o.start) : o.end <= +d1 ? "ends " + fmtTime(o.end) : "all day";
-      return `<div class="ev" style="color:${o.color}"><i></i><span>${o.name}</span> <small>${label}</small></div>`;
+      return `<div class="ev" style="color:${o.color}" title="${esc(o.name)} · ${label}"><i></i><span>${o.short || o.name}</span> <small>${label}</small></div>`;
     }).join("");
     tips["d" + i] = dayTip(d0, d1, today);
     html += `<div class="${cls}" tabindex="0" data-tip="d${i}"><div class="num">${d0.getDate()}</div><div class="evs">${evs}</div></div>`;
