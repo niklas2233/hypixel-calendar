@@ -199,7 +199,7 @@ const MONTHS = ["Early Spring","Spring","Late Spring","Early Summer","Summer","L
 // Recurring yearly events: month index (0-11), start day (1-31), length in SkyBlock days.
 const EVENTS = [
   { id: "hoppity", name: "Hoppity's Hunt",    color: "var(--green)",  mc: "a", at: [[0, 1, 93]] },
-  { id: "zoo",     name: "Traveling Zoo",     color: "var(--yellow)", mc: "e", at: [[3, 1, 3], [9, 1, 3]] },
+  { id: "zoo",     name: "Traveling Zoo",     color: "var(--yellow)", mc: "e", at: [[3, 1, 3, "Summer Traveling Zoo"], [9, 1, 3, "Winter Traveling Zoo"]] },
   { id: "elect",   name: "Election Results",  color: "var(--red)",    mc: "c", at: [[2, 27, 1]] },
   { id: "booth",   name: "Election Opens",    color: "var(--red)",    mc: "c", at: [[5, 27, 1]] },
   { id: "spooky",  name: "Spooky Festival",   color: "var(--gold)",   mc: "6", at: [[8, 29, 3]] },
@@ -217,10 +217,10 @@ function occurrences(from, to) {
     const ys = EPOCH + y * YEAR;
     for (const e of EVENTS) {
       if (hidden.has(e.id)) continue;
-      for (const [m, d, len] of e.at) {
+      for (const [m, d, len, label] of e.at) {
         const start = ys + m * MONTH + (d - 1) * DAY, end = start + len * DAY;
         if (e.within && (end <= e.within[0] || start >= e.within[1])) continue;
-        if (end > from && start < to) out.push({ ...e, start, end, year: y + 1 });
+        if (end > from && start < to) out.push({ ...e, name: label || e.name, start, end, year: y + 1 });
       }
     }
   }
