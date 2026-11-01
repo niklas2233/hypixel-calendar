@@ -18,6 +18,12 @@ docker run -d -p 8080:80 --name hypixel-calendar hypixel-calendar
 
 Then open http://localhost:8080.
 
+Or use the prebuilt image, published to GitHub Container Registry on every push to `main`:
+
+```bash
+docker run -d -p 8080:80 --name hypixel-calendar ghcr.io/niklas2233/hypixel-calendar:latest
+```
+
 ## How times are calculated
 
 SkyBlock Year 1 began at `1560275700000` (11 June 2019, 17:55 UTC). One SkyBlock day is 20 real minutes, a month is 31 days, and a year is 124 real hours.
