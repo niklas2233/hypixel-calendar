@@ -143,7 +143,9 @@ footer { color: var(--muted); font-size: 18px; text-align: center; }
 .src.warn { color: var(--red); }
 .cands { display: grid; gap: 8px; }
 .cand { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: baseline; }
-.cand .who { color: var(--fg); }
+.cand .who { color: var(--fg); cursor: help; justify-self: start; }
+.cand .who:hover { text-decoration: underline; }
+.cand .who:focus-visible { outline: 2px solid var(--yellow); }
 .cand.lead .who { color: var(--gold); }
 .cand .votes { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 19px; }
 .cand .bar { grid-column: 1 / -1; height: 12px; background: var(--slot); border: 2px solid; border-color: var(--panel-lo) #444 #444 var(--panel-lo); }
@@ -257,7 +259,7 @@ let view = new Date(); view.setDate(1);
 
 // Hypixel-style item lore for a day. Busier days get a higher "rarity", like item tiers.
 const RARITY = [["§f", "COMMON"], ["§a", "UNCOMMON"], ["§9", "RARE"], ["§5", "EPIC"], ["§6", "LEGENDARY"]];
-const tips = [];
+const tips = {}; // tooltip HTML by data-tip key: "d<i>" for days, "c<i>" for candidates
 function dayTip(d0, d1, today) {
   const [rc, rname] = RARITY[Math.min(today.length, RARITY.length - 1)];
   const sb = sbDate(+d0);
@@ -281,20 +283,19 @@ function placeTip(x, y) {
   if (top + h > innerHeight - 8) top = innerHeight - 8 - h;
   tipEl.style.transform = `translate(${left}px, ${Math.max(8, top)}px)`;
 }
-function showTip(day, x, y) {
-  tipEl.innerHTML = tips[day.dataset.i]; tipEl.hidden = false; placeTip(x, y);
+function showTip(el, x, y) {
+  tipEl.innerHTML = tips[el.dataset.tip]; tipEl.hidden = false; placeTip(x, y);
 }
-const gridEl = document.getElementById("grid");
-gridEl.addEventListener("mousemove", e => {
-  const day = e.target.closest(".day");
-  day ? showTip(day, e.clientX, e.clientY) : (tipEl.hidden = true);
+document.addEventListener("mousemove", e => {
+  const el = e.target.closest("[data-tip]");
+  el ? showTip(el, e.clientX, e.clientY) : (tipEl.hidden = true);
 });
-gridEl.addEventListener("mouseleave", () => tipEl.hidden = true);
-gridEl.addEventListener("focusin", e => {
-  const day = e.target.closest(".day"), r = day?.getBoundingClientRect();
-  if (day) showTip(day, r.right - 10, r.top + 20);
+document.addEventListener("mouseleave", () => tipEl.hidden = true);
+document.addEventListener("focusin", e => {
+  const el = e.target.closest("[data-tip]"), r = el?.getBoundingClientRect();
+  if (el) showTip(el, r.right - 10, r.top + 20);
 });
-gridEl.addEventListener("focusout", () => tipEl.hidden = true);
+document.addEventListener("focusout", () => tipEl.hidden = true);
 
 function renderMonth() {
   const grid = document.getElementById("grid");
@@ -317,8 +318,8 @@ function renderMonth() {
       const label = o.start >= +d0 ? fmtTime(o.start) : o.end <= +d1 ? "ends " + fmtTime(o.end) : "all day";
       return `<div class="ev" style="color:${o.color}"><i></i><span>${o.name}</span> <small>${label}</small></div>`;
     }).join("");
-    tips[i] = dayTip(d0, d1, today);
-    html += `<div class="${cls}" tabindex="0" data-i="${i}"><div class="num">${d0.getDate()}</div><div class="evs">${evs}</div></div>`;
+    tips["d" + i] = dayTip(d0, d1, today);
+    html += `<div class="${cls}" tabindex="0" data-tip="d${i}"><div class="num">${d0.getDate()}</div><div class="evs">${evs}</div></div>`;
   }
   grid.innerHTML = html;
 }
@@ -373,7 +374,6 @@ const SNAPSHOT = {"lastUpdated":1793571772346,"mayor":{"key":"slayer","name":"Aa
 const MC = { 0:"#000000",1:"#0000aa",2:"#00aa00",3:"#00aaaa",4:"#aa0000",5:"#aa00aa",6:"#ffaa00",7:"#aaaaaa",
              8:"#555555",9:"#5555ff",a:"#55ff55",b:"#55ffff",c:"#ff5555",d:"#ff55ff",e:"#ffff55",f:"#ffffff" };
 const html = s => s.replace(/[&<>"']/g, ch => `&#${ch.charCodeAt(0)};`);
-const plain = s => s.replace(/§./g, "");
 function mc(s) {
   let color = MC[7];
   return s.split("§").map((part, i) => {
@@ -417,11 +417,17 @@ function renderElection(data, live) {
   title.textContent = `Year ${c.year} Election · results ${fmtFull(resultsAt(c.year + 1))}`;
   cands.innerHTML = sorted.map((x, i) => {
     const pct = (x.votes || 0) / total * 100;
+    const lines = [`§8Year ${c.year} Candidate`, "",
+      `§7Votes: §e${(x.votes || 0).toLocaleString()} §8(${pct.toFixed(1)}%)`, `§7Rank: §f#${i + 1}`, ""];
+    for (const p of x.perks) lines.push(`§a${p.name}${p.minister ? " §b(Minister perk)" : ""}`, "§7" + p.description, "");
+    lines.push(i === 0 ? "§6§lLEADING CANDIDATE" : "§7§lCANDIDATE");
+    tips["c" + i] = `<div class="l name">${mc((i === 0 ? "§6" : "§e") + "Mayor " + x.name)}</div>`
+      + lines.map(l => `<div class="l">${mc(l)}</div>`).join("");
     return `<div class="cand ${i === 0 ? "lead" : ""}">
-      <span class="who">${i === 0 ? "★ " : ""}${html(x.name)}</span>
+      <span class="who" tabindex="0" data-tip="c${i}">${i === 0 ? "★ " : ""}${html(x.name)}</span>
       <span class="votes">${(x.votes || 0).toLocaleString()} · ${pct.toFixed(1)}%</span>
       <div class="bar"><div style="width:${pct}%"></div></div>
-      <div class="cperks">${x.perks.map(p => `<span title="${html(plain(p.description))}">${mc((p.minister ? "§b" : "§a") + p.name)}</span>`).join(" · ")}</div>
+      <div class="cperks">${x.perks.map(p => mc((p.minister ? "§b" : "§a") + p.name)).join(" · ")}</div>
     </div>`;
   }).join("");
 }
