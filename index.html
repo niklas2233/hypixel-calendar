@@ -80,7 +80,24 @@ button:focus-visible { outline: 3px solid var(--yellow); }
   min-width: 0;
   display: flex; flex-direction: column; gap: 3px;
 }
+.day { cursor: pointer; }
+.day:hover { border-color: #fff #ccc #ccc #fff; }
+.day:focus-visible { outline: 3px solid var(--yellow); }
 .day.other { opacity: .38; }
+.day.other:hover, .day.other:focus { opacity: 1; }
+/* Day details as a Minecraft/Hypixel item tooltip that follows the cursor */
+#tip {
+  position: fixed; left: 0; top: 0; z-index: 100;
+  width: max-content; max-width: min(320px, calc(100vw - 16px));
+  background: #100010f2;
+  border: 2px solid; border-image: linear-gradient(#5000ff, #28007f) 1;
+  outline: 2px solid #100010;
+  padding: 4px 8px 6px;
+  font-size: 21px; line-height: 1.05;
+  pointer-events: none;
+}
+#tip .l { min-height: 1em; white-space: pre-wrap; }
+#tip .name { font-size: 23px; margin-bottom: 2px; }
 .day.today { border-color: var(--green); box-shadow: inset 0 0 0 1px #1d5c1d; }
 .num { font-size: 20px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .today .num { color: var(--green); }
@@ -181,13 +198,13 @@ const MONTHS = ["Early Spring","Spring","Late Spring","Early Summer","Summer","L
 
 // Recurring yearly events: month index (0-11), start day (1-31), length in SkyBlock days.
 const EVENTS = [
-  { id: "hoppity", name: "Hoppity's Hunt",    color: "var(--green)",  at: [[0, 1, 93]] },
-  { id: "zoo",     name: "Traveling Zoo",     color: "var(--yellow)", at: [[3, 1, 3], [9, 1, 3]] },
-  { id: "elect",   name: "Election Results",  color: "var(--red)",    at: [[2, 27, 1]] },
-  { id: "booth",   name: "Election Opens",    color: "var(--red)",    at: [[5, 27, 1]] },
-  { id: "spooky",  name: "Spooky Festival",   color: "var(--gold)",   at: [[8, 29, 3]] },
-  { id: "jerry",   name: "Season of Jerry",   color: "var(--aqua)",   at: [[11, 24, 3]] },
-  { id: "newyear", name: "New Year Celebration", color: "var(--pink)", at: [[11, 29, 3]] },
+  { id: "hoppity", name: "Hoppity's Hunt",    color: "var(--green)",  mc: "a", at: [[0, 1, 93]] },
+  { id: "zoo",     name: "Traveling Zoo",     color: "var(--yellow)", mc: "e", at: [[3, 1, 3], [9, 1, 3]] },
+  { id: "elect",   name: "Election Results",  color: "var(--red)",    mc: "c", at: [[2, 27, 1]] },
+  { id: "booth",   name: "Election Opens",    color: "var(--red)",    mc: "c", at: [[5, 27, 1]] },
+  { id: "spooky",  name: "Spooky Festival",   color: "var(--gold)",   mc: "6", at: [[8, 29, 3]] },
+  { id: "jerry",   name: "Season of Jerry",   color: "var(--aqua)",   mc: "b", at: [[11, 24, 3]] },
+  { id: "newyear", name: "New Year Celebration", color: "var(--pink)", mc: "d", at: [[11, 29, 3]] },
 ];
 
 let hidden = new Set();
@@ -233,6 +250,47 @@ const esc = s => s.replace(/'/g, "&#39;");
 
 let view = new Date(); view.setDate(1);
 
+// Hypixel-style item lore for a day. Busier days get a higher "rarity", like item tiers.
+const RARITY = [["§f", "COMMON"], ["§a", "UNCOMMON"], ["§9", "RARE"], ["§5", "EPIC"], ["§6", "LEGENDARY"]];
+const tips = [];
+function dayTip(d0, d1, today) {
+  const [rc, rname] = RARITY[Math.min(today.length, RARITY.length - 1)];
+  const sb = sbDate(+d0);
+  const t = o => o < +d0 || o > +d1 ? fmtFull(o) : fmtTime(o);
+  const lines = [`§8${MONTHS[sb.month]} ${ord(sb.day)}, Year ${sb.year}`, ""];
+  for (const o of today) {
+    lines.push(`§${o.mc}${o.name}`, `§7${t(o.start)} §8→ §7${t(o.end)}`, "");
+  }
+  if (!today.length) lines.push("§7No events today.", "");
+  lines.push(`${rc}§l${rname} DAY`);
+  return `<div class="l name">${mc(rc + d0.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" }))}</div>`
+    + lines.map(l => `<div class="l">${mc(l)}</div>`).join("");
+}
+
+const tipEl = document.createElement("div");
+tipEl.id = "tip"; tipEl.hidden = true; document.body.append(tipEl);
+function placeTip(x, y) {
+  const w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+  let left = x + 14, top = y - 14;
+  if (left + w > innerWidth - 8) left = Math.max(8, x - 14 - w);
+  if (top + h > innerHeight - 8) top = innerHeight - 8 - h;
+  tipEl.style.transform = `translate(${left}px, ${Math.max(8, top)}px)`;
+}
+function showTip(day, x, y) {
+  tipEl.innerHTML = tips[day.dataset.i]; tipEl.hidden = false; placeTip(x, y);
+}
+const gridEl = document.getElementById("grid");
+gridEl.addEventListener("mousemove", e => {
+  const day = e.target.closest(".day");
+  day ? showTip(day, e.clientX, e.clientY) : (tipEl.hidden = true);
+});
+gridEl.addEventListener("mouseleave", () => tipEl.hidden = true);
+gridEl.addEventListener("focusin", e => {
+  const day = e.target.closest(".day"), r = day?.getBoundingClientRect();
+  if (day) showTip(day, r.right - 10, r.top + 20);
+});
+gridEl.addEventListener("focusout", () => tipEl.hidden = true);
+
 function renderMonth() {
   const grid = document.getElementById("grid");
   document.getElementById("title").textContent = view.toLocaleDateString([], { month: "long", year: "numeric" });
@@ -249,11 +307,13 @@ function renderMonth() {
     const d0 = new Date(start); d0.setDate(start.getDate() + i);
     const d1 = new Date(d0); d1.setDate(d0.getDate() + 1);
     const cls = ["day", d0.getMonth() !== view.getMonth() && "other", d0.toDateString() === todayKey && "today"].filter(Boolean).join(" ");
-    const evs = occ.filter(o => o.end > d0 && o.start < d1).map(o => {
+    const today = occ.filter(o => o.end > d0 && o.start < d1);
+    const evs = today.map(o => {
       const label = o.start >= +d0 ? fmtTime(o.start) : o.end <= +d1 ? "ends " + fmtTime(o.end) : "all day";
-      return `<div class="ev" style="color:${o.color}" title='${esc(tip(o))}'><i></i><span>${o.name}</span> <small>${label}</small></div>`;
+      return `<div class="ev" style="color:${o.color}"><i></i><span>${o.name}</span> <small>${label}</small></div>`;
     }).join("");
-    html += `<div class="${cls}"><div class="num">${d0.getDate()}</div><div class="evs">${evs}</div></div>`;
+    tips[i] = dayTip(d0, d1, today);
+    html += `<div class="${cls}" tabindex="0" data-i="${i}"><div class="num">${d0.getDate()}</div><div class="evs">${evs}</div></div>`;
   }
   grid.innerHTML = html;
 }
@@ -327,7 +387,7 @@ function renderElection(data, live) {
   // Mayor events with fixed dates: Marina's Fishing Festival runs the 1st–3rd of every month of her term.
   EVENTS.splice(0, EVENTS.length, ...EVENTS.filter(e => !e.mayor));
   if (perks.some(p => p.name === "Fishing Festival"))
-    EVENTS.push({ id: "fishing", mayor: true, name: "Fishing Festival", color: "#00aaaa",
+    EVENTS.push({ id: "fishing", mayor: true, name: "Fishing Festival", color: "#00aaaa", mc: "3",
                   at: MONTHS.map((_, i) => [i, 1, 3]), within: [termStart, termEnd] });
 
   const stale = now > termEnd;
