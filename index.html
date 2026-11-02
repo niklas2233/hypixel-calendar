@@ -318,7 +318,7 @@ function renderMonth() {
     const today = occ.filter(o => o.end > d0 && o.start < d1);
     const evs = today.map(o => {
       const label = o.start >= +d0 ? fmtTime(o.start) : o.end <= +d1 ? "ends " + fmtTime(o.end) : "all day";
-      return `<div class="ev" style="color:${o.color}" title="${esc(o.name)} · ${label}"><i></i><span>${o.short || o.name}</span> <small>${label}</small></div>`;
+      return `<div class="ev" style="color:${o.color}"><i></i><span>${o.short || o.name}</span> <small>${label}</small></div>`;
     }).join("");
     tips["d" + i] = dayTip(d0, d1, today);
     html += `<div class="${cls}" tabindex="0" data-tip="d${i}"><div class="num">${d0.getDate()}</div><div class="evs">${evs}</div></div>`;
