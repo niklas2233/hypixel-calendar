@@ -254,8 +254,15 @@ function fmtDur(ms) {
   if (h) return `${h}h ${m}m`;
   return `${m}m ${String(sec).padStart(2, "0")}s`;
 }
-const tip = o => `${o.name} (Year ${o.year})\n${fmtFull(o.start)} → ${fmtFull(o.end)}`;
-const esc = s => s.replace(/'/g, "&#39;");
+// Hypixel-style lore for one event occurrence (Up Next list).
+function eventTip(o, now) {
+  const sb = sbDate(o.start), live = o.start <= now;
+  const lines = [`§8${MONTHS[sb.month]} ${ord(sb.day)}, Year ${o.year}`, "",
+    `§7Starts: §f${fmtFull(o.start)}`, `§7Ends: §f${fmtFull(o.end)}`, `§7Duration: §f${fmtDur(o.end - o.start)}`, "",
+    live ? `§7Ends in: §e${fmtDur(o.end - now)}` : `§7Starts in: §e${fmtDur(o.start - now)}`, "",
+    live ? "§a§lACTIVE NOW" : "§e§lUPCOMING EVENT"];
+  return `<div class="l name">${mc(`§${o.mc}${o.name}`)}</div>` + lines.map(l => `<div class="l">${mc(l)}</div>`).join("");
+}
 
 let view = new Date(); view.setDate(1);
 
@@ -286,6 +293,7 @@ function placeTip(x, y) {
   tipEl.style.transform = `translate(${left}px, ${Math.max(8, top)}px)`;
 }
 function showTip(el, x, y) {
+  tipEl.dataset.key = el.dataset.tip;
   tipEl.innerHTML = tips[el.dataset.tip]; tipEl.hidden = false; placeTip(x, y);
 }
 document.addEventListener("mousemove", e => {
@@ -332,12 +340,15 @@ function renderClock() {
   document.getElementById("sbtime").textContent =
     `Year ${sb.year} · ${String(sb.h).padStart(2, "0")}:${String(sb.m - sb.m % 10).padStart(2, "0")}`;
   const up = occurrences(now, now + YEAR).slice(0, 8);
-  document.getElementById("upcoming").innerHTML = up.map(o => {
+  document.getElementById("upcoming").innerHTML = up.map((o, i) => {
+    tips["u" + i] = eventTip(o, now);
     const live = o.start <= now;
-    return `<li title='${esc(tip(o))}'><div class="name" style="color:${o.color}"><i></i>${o.name}</div>
+    return `<li data-tip="u${i}"><div class="name" style="color:${o.color}"><i></i>${o.name}</div>
       <div class="when">${live ? `<span class="live">LIVE NOW</span>` : fmtFull(o.start)}
       <span class="cd ${live ? "live" : ""}">${live ? "ends in " + fmtDur(o.end - now) : "in " + fmtDur(o.start - now)}</span></div></li>`;
   }).join("");
+  const key = tipEl.dataset.key;
+  if (!tipEl.hidden && key?.startsWith("u")) tipEl.innerHTML = tips[key]; // keep an open countdown ticking
 }
 
 function renderLegend() {
