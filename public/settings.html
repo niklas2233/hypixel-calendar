@@ -1,0 +1,172 @@
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="darkreader-lock">
+<title>Discord Notifications · SkyBlock Event Calendar</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+.wrap { max-width: 900px; }
+.field { display: grid; gap: 4px; margin-bottom: 12px; }
+.field label { color: var(--muted); }
+.field small { color: #777; font-size: 18px; }
+input[type=text], input[type=url] {
+  font: 20px var(--font-body); color: var(--fg); background: #000;
+  border: 3px solid; border-color: #3a3a3a #888 #888 #3a3a3a;
+  padding: 4px 8px; width: 100%; min-width: 0;
+}
+input[type=text]:focus, input[type=url]:focus { outline: 2px solid var(--yellow); }
+.check { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.check input, .ev-row input[type=checkbox] { accent-color: var(--green); width: 18px; height: 18px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 4px; }
+#status { font-size: 20px; }
+#status.ok { color: var(--green); }
+#status.err { color: var(--red); }
+.events { display: grid; gap: 8px; }
+.ev-row { background: var(--slot); border: 3px solid; border-color: var(--panel-lo) #444 #444 var(--panel-lo); padding: 8px 10px; display: grid; gap: 6px; }
+.ev-row.off .leads { opacity: .35; }
+.ev-row .note { color: #777; font-size: 18px; }
+.leads { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Lead-time toggles look like inventory slots: lit when selected */
+.lead input { position: absolute; opacity: 0; pointer-events: none; }
+.lead span {
+  display: inline-block; padding: 1px 9px 3px; font-size: 19px; cursor: pointer; color: var(--muted);
+  background: #1a1a1a; border: 2px solid; border-color: #0d0d0d #3a3a3a #3a3a3a #0d0d0d;
+}
+.lead input:checked + span { color: #102010; background: var(--green); border-color: #a8ffa8 #1f7a1f #1f7a1f #a8ffa8; text-shadow: none; }
+.lead input:focus-visible + span { outline: 2px solid var(--yellow); }
+.bulk { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+</style>
+
+<div class="wrap">
+  <header class="panel">
+    <h1>Discord Notifications</h1>
+    <a class="btn" href="./">Back to calendar</a>
+  </header>
+
+  <section class="panel">
+    <h2>Webhook</h2>
+    <div class="field">
+      <label for="webhook">Webhook URL</label>
+      <input type="url" id="webhook" autocomplete="off" placeholder="https://discord.com/api/webhooks/…">
+      <small id="webhookState">In Discord: Server Settings → Integrations → Webhooks → New Webhook → Copy Webhook URL.</small>
+    </div>
+    <div class="field">
+      <label for="roleId">Role to ping (optional)</label>
+      <input type="text" id="roleId" inputmode="numeric" autocomplete="off" placeholder="Role ID, for example 123456789012345678">
+      <small>Turn on Developer Mode in Discord, then right-click the role → Copy Role ID. Leave empty for no ping.</small>
+    </div>
+    <label class="check"><input type="checkbox" id="mayorChange"> Post when a new mayor takes office</label>
+  </section>
+
+  <section class="panel">
+    <h2>Events</h2>
+    <p class="sub" style="margin:0 0 10px">Pick when you get a message for each event. Pick several to get several reminders. Times in Discord show in each reader's own timezone.</p>
+    <div class="bulk">
+      <button type="button" id="allOn">Turn all on</button>
+      <button type="button" id="allOff">Turn all off</button>
+    </div>
+    <div class="events" id="events"></div>
+  </section>
+
+  <section class="panel actions">
+    <button type="button" id="save">Save settings</button>
+    <button type="button" id="test">Send test message</button>
+    <button type="button" id="clearHook" hidden>Remove webhook</button>
+    <span id="status" role="status"></span>
+  </section>
+</div>
+
+<script src="skyblock.js"></script>
+<script>
+const LABELS = { 0: "At start", 5: "5 min", 10: "10 min", 15: "15 min", 30: "30 min", 60: "1 hour", 180: "3 hours", 1440: "1 day" };
+const $ = id => document.getElementById(id);
+let leads = [];
+
+async function api(method, url, body) {
+  const r = await fetch(url, { method, headers: body ? { "content-type": "application/json" } : {}, body: body && JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || `The server answered ${r.status}.`);
+  return j;
+}
+
+function status(text, ok) {
+  $("status").textContent = text;
+  $("status").className = ok ? "ok" : "err";
+}
+
+function render(s) {
+  $("webhook").value = "";
+  $("webhook").placeholder = s.webhookSet ? `Saved (${s.webhookHint}). Paste a new URL to replace it.` : "https://discord.com/api/webhooks/…";
+  $("clearHook").hidden = !s.webhookSet;
+  $("roleId").value = s.roleId;
+  $("mayorChange").checked = s.mayorChange;
+  $("events").innerHTML = SB.ALL_TYPES.map(e => {
+    const cfg = s.events[e.id] || { enabled: false, leads: [] };
+    return `<div class="ev-row ${cfg.enabled ? "" : "off"}" data-id="${e.id}">
+      <label class="check" style="color:${e.color}"><input type="checkbox" class="en" id="en-${e.id}" ${cfg.enabled ? "checked" : ""}>${e.name}</label>
+      ${e.mayor ? `<div class="note">Only while Marina's Fishing Festival perk is active.</div>` : ""}
+      <div class="leads">${leads.map(l => `<label class="lead"><input type="checkbox" id="l-${e.id}-${l}" value="${l}" ${cfg.leads.includes(l) ? "checked" : ""}><span>${LABELS[l] ?? l + " min"}</span></label>`).join("")}</div>
+    </div>`;
+  }).join("");
+}
+
+function collect() {
+  const events = {};
+  for (const row of document.querySelectorAll(".ev-row")) {
+    events[row.dataset.id] = {
+      enabled: row.querySelector(".en").checked,
+      leads: [...row.querySelectorAll(".lead input:checked")].map(i => Number(i.value)),
+    };
+  }
+  const body = { roleId: $("roleId").value, mayorChange: $("mayorChange").checked, events };
+  if ($("webhook").value.trim()) body.webhook = $("webhook").value.trim(); // empty field keeps the saved URL
+  return body;
+}
+
+async function save(body) {
+  $("save").disabled = true;
+  try {
+    render((await api("PUT", "api/settings", body)).settings);
+    status("Saved.", true);
+    return true;
+  } catch (e) {
+    status(e.message, false);
+  } finally {
+    $("save").disabled = false;
+  }
+}
+
+$("events").addEventListener("change", e => {
+  const row = e.target.closest(".ev-row");
+  if (e.target.classList.contains("en")) row.classList.toggle("off", !e.target.checked);
+});
+$("allOn").onclick = () => document.querySelectorAll(".ev-row").forEach(r => { r.querySelector(".en").checked = true; r.classList.remove("off"); });
+$("allOff").onclick = () => document.querySelectorAll(".ev-row").forEach(r => { r.querySelector(".en").checked = false; r.classList.add("off"); });
+$("save").onclick = () => save(collect());
+$("clearHook").onclick = () => save({ webhook: "" });
+$("test").onclick = async () => {
+  $("test").disabled = true;
+  try {
+    if ($("webhook").value.trim() && !(await save(collect()))) return; // save a newly pasted URL first
+    await api("POST", "api/test");
+    status("Test message sent. Check your Discord channel.", true);
+  } catch (e) {
+    status(e.message, false);
+  } finally {
+    $("test").disabled = false;
+  }
+};
+
+// Same pixel-noise background as the calendar.
+const c = document.createElement("canvas"); c.width = c.height = 16;
+const g = c.getContext("2d");
+for (let x = 0; x < 16; x++) for (let y = 0; y < 16; y++) {
+  const v = 14 + Math.floor(Math.random() * 12); g.fillStyle = `rgb(${v},${v},${v + 2})`; g.fillRect(x, y, 1, 1);
+}
+document.body.style.backgroundImage = `url(${c.toDataURL()})`;
+
+api("GET", "api/settings")
+  .then(j => { leads = j.leads; render(j.settings); })
+  .catch(e => status(`Couldn't load settings: ${e.message}`, false));
+</script>

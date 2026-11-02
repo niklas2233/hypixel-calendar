@@ -1,0 +1,12 @@
+services:
+  hypixel-calendar:
+    image: ghcr.io/niklas2233/hypixel-calendar:latest
+    restart: unless-stopped
+    ports:
+      - "8124:8124"
+    environment:
+      TZ: Europe/Stockholm
+      # Protects the Discord settings page. Leave empty only if the port isn't reachable by others.
+      SETTINGS_PASSWORD: ""
+    volumes:
+      - ./data:/data

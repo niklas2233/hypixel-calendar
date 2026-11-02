@@ -5,161 +5,13 @@
 <title>SkyBlock Event Calendar</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
-<style>
-/* Layout: Minecraft inventory-style panels — month grid on the left, "upcoming" sidebar on the right; stacks on phones. Single dark look by choice. */
-:root {
-  color-scheme: dark;
-  --bg: #121212;
-  --panel: #2b2b2b;
-  --panel-hi: #555;
-  --panel-lo: #0d0d0d;
-  --slot: #1c1c1c;
-  --fg: #e0e0e0;
-  --muted: #aaaaaa;
-  --gold: #ffaa00;
-  --green: #55ff55;
-  --aqua: #55ffff;
-  --red: #ff5555;
-  --pink: #ff55ff;
-  --yellow: #ffff55;
-  --font-display: "Press Start 2P", "Courier New", monospace;
-  --font-body: "VT323", "Consolas", monospace;
-}
-* { box-sizing: border-box; }
-body {
-  background: var(--bg);
-  background-size: 64px 64px;
-  image-rendering: pixelated;
-  color: var(--fg);
-  font: 22px/1.15 var(--font-body);
-  padding-block: 20px 40px;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  text-shadow: 2px 2px 0 rgba(0,0,0,.55);
-}
-.wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 16px; }
-.panel {
-  background: var(--panel);
-  border: 4px solid;
-  border-color: var(--panel-hi) var(--panel-lo) var(--panel-lo) var(--panel-hi);
-  box-shadow: 0 0 0 3px #000;
-  padding: 14px;
-  min-width: 0;
-}
-h1, h2 { font-family: var(--font-display); font-weight: 400; margin: 0; text-wrap: balance; }
-h1 { font-size: clamp(14px, 2.6vw, 24px); color: var(--gold); text-shadow: 3px 3px 0 #3f2a00; }
-h2 { font-size: 12px; color: var(--yellow); text-shadow: 2px 2px 0 #3f3f15; margin-bottom: 10px; letter-spacing: .04em; }
-header.panel { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; }
-.sub { color: var(--muted); }
-.sub b { color: var(--aqua); font-weight: 400; }
-.main { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
-@media (max-width: 900px) { .main { grid-template-columns: minmax(0, 1fr); } }
-
-.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
-.toolbar h2 { margin: 0 0 0 8px; font-size: clamp(11px, 1.6vw, 15px); color: var(--fg); text-shadow: 2px 2px 0 #000; }
-button {
-  font: 20px var(--font-body);
-  color: var(--fg);
-  text-shadow: 2px 2px 0 #3f3f3f;
-  background: #6f6f6f;
-  border: 3px solid;
-  border-color: #aaa #3a3a3a #3a3a3a #aaa;
-  outline: 2px solid #000;
-  padding: 2px 12px 4px;
-  cursor: pointer;
-}
-button:hover { background: #7e86b8; border-color: #bcc4ff #3c4270 #3c4270 #bcc4ff; color: var(--yellow); }
-button:focus-visible { outline: 3px solid var(--yellow); }
-
-.grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
-.dow { font-family: var(--font-display); font-size: 9px; color: var(--muted); text-align: center; padding: 4px 0 6px; }
-.day {
-  background: var(--slot);
-  border: 3px solid;
-  border-color: var(--panel-lo) #444 #444 var(--panel-lo);
-  min-height: 108px;
-  padding: 4px 5px;
-  min-width: 0;
-  display: flex; flex-direction: column; gap: 3px;
-}
-.day { cursor: pointer; }
-.day:hover { border-color: #fff #ccc #ccc #fff; }
-.day:focus-visible { outline: 3px solid var(--yellow); }
-.day.other { opacity: .38; }
-.day.other:hover, .day.other:focus { opacity: 1; }
-/* Day details as a Minecraft/Hypixel item tooltip that follows the cursor */
-#tip {
-  position: fixed; left: 0; top: 0; z-index: 100;
-  width: max-content; max-width: min(320px, calc(100vw - 16px));
-  background: #100010f2;
-  border: 2px solid; border-image: linear-gradient(#5000ff, #28007f) 1;
-  outline: 2px solid #100010;
-  padding: 4px 8px 6px;
-  font-size: 21px; line-height: 1.05;
-  pointer-events: none;
-}
-#tip .l { min-height: 1em; white-space: pre-wrap; }
-#tip .name { font-size: 23px; margin-bottom: 2px; }
-.day.today { border-color: var(--green); box-shadow: inset 0 0 0 1px #1d5c1d; }
-.num { font-size: 20px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.today .num { color: var(--green); }
-.ev {
-  font-size: 17px; line-height: 1;
-  display: flex; gap: 4px; align-items: baseline;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  cursor: default;
-}
-.ev i { flex: none; width: 8px; height: 8px; background: currentColor; box-shadow: 1px 1px 0 #000; }
-.ev span { overflow: hidden; text-overflow: ellipsis; }
-.ev small { font-size: 16px; color: var(--fg); opacity: .8; }
-@media (max-width: 640px) {
-  .day { min-height: 64px; padding: 2px; }
-  .ev span, .ev small { display: none; }
-  .ev i { width: 10px; height: 10px; }
-  .day .evs { display: flex; flex-wrap: wrap; gap: 3px; }
-}
-
-.sb-date { font-size: 26px; color: var(--gold); }
-.sb-time { color: var(--muted); margin-bottom: 14px; }
-.up { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.up li { background: var(--slot); border: 3px solid; border-color: var(--panel-lo) #444 #444 var(--panel-lo); padding: 5px 8px; }
-.up .name { display: flex; gap: 6px; align-items: baseline; }
-.up .name i { width: 9px; height: 9px; background: currentColor; flex: none; box-shadow: 1px 1px 0 #000; }
-.up .when { color: var(--muted); font-size: 19px; font-variant-numeric: tabular-nums; }
-.up .cd { float: right; color: var(--fg); }
-.up .live { color: var(--green); }
-
-.legend { display: grid; gap: 4px; margin-top: 16px; }
-.legend label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
-.legend input { accent-color: var(--green); width: 16px; height: 16px; }
-.legend .meta { color: var(--muted); font-size: 18px; margin-left: auto; }
-footer { color: var(--muted); font-size: 18px; text-align: center; }
-.col { display: grid; gap: 16px; min-width: 0; }
-.mayor-name { font-size: 26px; color: var(--gold); }
-.term { color: var(--muted); font-size: 19px; margin-bottom: 8px; }
-.perks { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 6px; }
-.perks b { color: var(--green); font-weight: 400; display: block; }
-.perks span { font-size: 19px; }
-.minister { color: var(--aqua); }
-.src { font-size: 17px; color: var(--muted); margin-top: -6px; margin-bottom: 12px; }
-.src.warn { color: var(--red); }
-.cands { display: grid; gap: 8px; }
-.cand { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: baseline; }
-.cand .who { color: var(--fg); cursor: help; justify-self: start; }
-.cand .who:hover { text-decoration: underline; }
-.cand .who:focus-visible { outline: 2px solid var(--yellow); }
-.cand.lead .who { color: var(--gold); }
-.cand .votes { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 19px; }
-.cand .bar { grid-column: 1 / -1; height: 12px; background: var(--slot); border: 2px solid; border-color: var(--panel-lo) #444 #444 var(--panel-lo); }
-.cand .bar div { height: 100%; background: #5a5a5a; box-shadow: inset 0 -3px 0 rgba(0,0,0,.35); }
-.cand.lead .bar div { background: var(--green); }
-.cand .cperks { grid-column: 1 / -1; font-size: 18px; color: var(--muted); }
-</style>
+<link rel="stylesheet" href="style.css">
 
 <div class="wrap">
   <header class="panel">
     <h1>SkyBlock Event Calendar</h1>
     <div class="sub">Times shown in your timezone: <b id="tz"></b></div>
+    <a class="btn" id="settingsLink" href="settings" hidden>Discord notifications</a>
   </header>
 
   <div class="main">
@@ -194,52 +46,15 @@ footer { color: var(--muted); font-size: 18px; text-align: center; }
   <footer>1 SkyBlock day = 20 real minutes · 1 SkyBlock year = 124 real hours. Not affiliated with Hypixel or Mojang.</footer>
 </div>
 
+<script src="skyblock.js"></script>
 <script>
-// SkyBlock calendar math. Year 1, Early Spring 1 began at this real timestamp.
-const EPOCH = 1560275700000, DAY = 20 * 60000, MONTH = 31 * DAY, YEAR = 12 * MONTH;
-const MONTHS = ["Early Spring","Spring","Late Spring","Early Summer","Summer","Late Summer",
-                "Early Autumn","Autumn","Late Autumn","Early Winter","Winter","Late Winter"];
-
-// Recurring yearly events: month index (0-11), start day (1-31), length in SkyBlock days.
-const EVENTS = [
-  { id: "hoppity", name: "Hoppity's Hunt",    short: "Hoppity", color: "var(--green)",  mc: "a", at: [[0, 1, 93]] },
-  { id: "zoo",     name: "Traveling Zoo",     color: "var(--yellow)", mc: "e", at: [[3, 1, 3, "Summer Traveling Zoo", "Zoo ☀"], [9, 1, 3, "Winter Traveling Zoo", "Zoo ❄"]] },
-  { id: "elect",   name: "Election Results",  short: "Elec. results", color: "var(--red)",    mc: "c", at: [[2, 27, 1]] },
-  { id: "booth",   name: "Election Opens",    short: "Elec. opens", color: "var(--red)",    mc: "c", at: [[5, 27, 1]] },
-  { id: "spooky",  name: "Spooky Festival",   short: "Spooky", color: "var(--gold)",   mc: "6", at: [[8, 29, 3]] },
-  { id: "jerry",   name: "Season of Jerry",   short: "Jerry", color: "var(--aqua)",   mc: "b", at: [[11, 24, 3]] },
-  { id: "newyear", name: "New Year Celebration", short: "New Year", color: "var(--pink)", mc: "d", at: [[11, 29, 3]] },
-];
+const { YEAR, MONTHS, MC, sbDate, ord, resultsAt } = SB;
 
 let hidden = new Set();
 try { hidden = new Set(JSON.parse(localStorage.getItem("hiddenEvents") || "[]")); } catch {}
-
-function occurrences(from, to) {
-  const out = [];
-  const y0 = Math.floor((from - EPOCH) / YEAR) - 1, y1 = Math.floor((to - EPOCH) / YEAR);
-  for (let y = y0; y <= y1; y++) {
-    const ys = EPOCH + y * YEAR;
-    for (const e of EVENTS) {
-      if (hidden.has(e.id)) continue;
-      for (const [m, d, len, label, short] of e.at) {
-        const start = ys + m * MONTH + (d - 1) * DAY, end = start + len * DAY;
-        if (e.within && (end <= e.within[0] || start >= e.within[1])) continue;
-        if (end > from && start < to) out.push({ ...e, name: label || e.name, short: short || e.short, start, end, year: y + 1 });
-      }
-    }
-  }
-  return out.sort((a, b) => a.start - b.start);
-}
-
-function sbDate(t) {
-  const ms = t - EPOCH, year = Math.floor(ms / YEAR) + 1;
-  const inYear = ms - (year - 1) * YEAR;
-  const month = Math.floor(inYear / MONTH), day = Math.floor((inYear % MONTH) / DAY) + 1;
-  const mins = Math.floor((inYear % DAY) / DAY * 1440);
-  return { year, month, day, h: Math.floor(mins / 60), m: mins % 60 };
-}
-
-const ord = n => n + (n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th");
+let mayorExtra = []; // events added by the current mayor, e.g. Fishing Festival
+const allEvents = () => [...SB.EVENTS, ...mayorExtra];
+const occurrences = (from, to) => SB.occurrences(from, to, allEvents().filter(e => !hidden.has(e.id)));
 // Clock style follows the viewer's timezone, not their browser language (an English browser in Sweden still gets 24h).
 // ponytail: hand-kept list of 12-hour regions; extend it if someone reports a wrong clock.
 const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
@@ -352,7 +167,7 @@ function renderClock() {
 }
 
 function renderLegend() {
-  document.getElementById("legend").innerHTML = "<h2>Show Events</h2>" + EVENTS.map(e => {
+  document.getElementById("legend").innerHTML = "<h2>Show Events</h2>" + allEvents().map(e => {
     const len = e.at[0][2], dur = len * 20 >= 60 ? `${len * 20 / 60}h` : `${len * 20}m`;
     return `<label style="color:${e.color}"><input type="checkbox" id="f-${e.id}" data-id="${e.id}" ${hidden.has(e.id) ? "" : "checked"}>${e.name}<span class="meta">${dur}</span></label>`;
   }).join("");
@@ -384,8 +199,6 @@ document.body.style.backgroundImage = `url(${c.toDataURL()})`;
 const SNAPSHOT = {"lastUpdated":1793571772346,"mayor":{"key":"slayer","name":"Aatrox","perks":[{"name":"SLASHED Pricing","description":"Starting slayer quests is §ehalf price§7."},{"name":"Slayer XP Buff","description":"Earn §d25% §7more Slayer XP."},{"name":"Pathfinder","description":"Gain rare drops §d20% §7more often."}],"minister":{"key":"events","name":"Foxy","perk":{"name":"Extra Event","description":"Schedules an extra §bFishing Festival §7event during the year.","minister":true}},"election":{"year":522}},"current":{"year":523,"candidates":[{"key":"dungeons","name":"Paul","perks":[{"name":"Marauder","description":"Dungeon reward chests are §e20% §7cheaper.","minister":false},{"name":"EZPZ","description":"Gain §e10 §7bonus score on dungeon runs.","minister":true}],"votes":264982},{"key":"mining","name":"Cole","perks":[{"name":"Mining Fiesta","description":"§7Gain §3+25☯ Mining Wisdom§7, §6+25%  Mining Fortune§7, and collect §9Refined Minerals §7and §5Glossy Gemstones§7 from mining!","minister":true}],"votes":187892},{"key":"farming","name":"Finnegan","perks":[{"name":"Pest Eradicator","description":"The duration of Pesthunter Phillip's §6 Farming Fortune §7bonus is now §a60m§7. Decreases the spawn cooldown of §2Pests §7by §a20%§7.","minister":true},{"name":"Blooming Business","description":"All Garden Visitors reward §aFine Flour§7 and §c+10% Copper §7for accepting offers. Invites §a5 §7unique visitors to your §aGarden §7and makes higher rarity visitors §a20% §7more likely to show up.","minister":false}],"votes":116244},{"key":"pets","name":"Diana","perks":[{"name":"Sharing is Caring","description":"Unlocks §a2 §7more §6Exp Share §7slots in your pets menu and increases the §6Exp Share §7rate by §a+10%§7!","minister":true}],"votes":17165},{"key":"economist","name":"Diaz","perks":[{"name":"Stock Exchange","description":"Participate in the §dStonks Auction §7for a chance to win §5Stock of Stonks§7! Trade them for §6extravagant items §7at the §bTrade Center§7.","minister":true}],"votes":38873}]}};
 
 // Minecraft § color codes → HTML. Formatting codes (§l, §o…) keep the current color.
-const MC = { 0:"#000000",1:"#0000aa",2:"#00aa00",3:"#00aaaa",4:"#aa0000",5:"#aa00aa",6:"#ffaa00",7:"#aaaaaa",
-             8:"#555555",9:"#5555ff",a:"#55ff55",b:"#55ffff",c:"#ff5555",d:"#ff55ff",e:"#ffff55",f:"#ffffff" };
 const html = s => s.replace(/[&<>"']/g, ch => `&#${ch.charCodeAt(0)};`);
 function mc(s) {
   let color = MC[7];
@@ -395,18 +208,9 @@ function mc(s) {
   }).join("");
 }
 
-// Late Spring 27th of a SkyBlock year (1-based): when election results are announced.
-const resultsAt = year => EPOCH + (year - 1) * YEAR + 2 * MONTH + 26 * DAY;
-
 function renderElection(data, live) {
-  const m = data.mayor, termStart = resultsAt(m.election.year + 1), termEnd = termStart + YEAR, now = Date.now();
-  const perks = [...m.perks, ...(m.minister ? [m.minister.perk] : [])];
-
-  // Mayor events with fixed dates: Marina's Fishing Festival runs the 1st–3rd of every month of her term.
-  EVENTS.splice(0, EVENTS.length, ...EVENTS.filter(e => !e.mayor));
-  if (perks.some(p => p.name === "Fishing Festival"))
-    EVENTS.push({ id: "fishing", mayor: true, name: "Fishing Festival", color: "#00aaaa", mc: "3",
-                  at: MONTHS.map((_, i) => [i, 1, 3]), within: [termStart, termEnd] });
+  const m = data.mayor, termEnd = resultsAt(m.election.year + 1) + YEAR, now = Date.now();
+  mayorExtra = SB.mayorEvents(data);
 
   const stale = now > termEnd;
   document.getElementById("mayor").innerHTML = `
@@ -447,11 +251,13 @@ function renderElection(data, live) {
 
 async function loadElection() {
   let data = SNAPSHOT, live = false;
-  try {
-    const r = await fetch("https://api.hypixel.net/v2/resources/skyblock/election");
-    const j = await r.json();
-    if (j.success) { data = j; live = true; }
-  } catch {}
+  // Our own server's cached copy first (it also means Discord settings exist), then Hypixel directly.
+  for (const url of ["api/election", "https://api.hypixel.net/v2/resources/skyblock/election"]) {
+    try {
+      const j = await (await fetch(url)).json();
+      if (j.success) { data = j; live = true; document.getElementById("settingsLink").hidden = url !== "api/election"; break; }
+    } catch {}
+  }
   renderElection(data, live);
   renderLegend(); renderMonth(); renderClock();
 }
