@@ -145,14 +145,31 @@ function validate(body, current) {
 
 // ---- HTTP ----
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8" };
-const PROTECTED = new Set(["/settings", "/settings.html", "/api/settings", "/api/test"]);
+const PROTECTED = new Set(["/api/settings", "/api/test"]);
 
-function authorized(req) {
+// Login sessions for the settings page: a random token in an HttpOnly cookie.
+// ponytail: kept in memory, so a container restart means logging in again; persist them if that gets annoying.
+const sessions = new Map(); // token -> expiry time
+const SESSION_MS = 30 * 86400000;
+const hash = s => crypto.createHash("sha256").update(String(s)).digest();
+
+function loggedIn(req) {
   if (!PASSWORD) return true;
-  const [scheme, b64] = (req.headers.authorization || "").split(" ");
-  const pass = scheme === "Basic" ? Buffer.from(b64 || "", "base64").toString().split(":").slice(1).join(":") : "";
-  const hash = s => crypto.createHash("sha256").update(s).digest();
-  return crypto.timingSafeEqual(hash(pass), hash(PASSWORD));
+  const token = /(?:^|;\s*)session=([a-f0-9]{64})/.exec(req.headers.cookie || "")?.[1];
+  return (sessions.get(token) || 0) > Date.now();
+}
+
+async function login(req, res) {
+  const { password } = await readJson(req);
+  if (!PASSWORD || !crypto.timingSafeEqual(hash(password ?? ""), hash(PASSWORD))) {
+    await new Promise(r => setTimeout(r, 1000)); // slows down guessing
+    return json(res, 401, { error: "Wrong password." });
+  }
+  const token = crypto.randomBytes(32).toString("hex");
+  sessions.set(token, Date.now() + SESSION_MS);
+  const secure = req.headers["x-forwarded-proto"] === "https" ? "; Secure" : "";
+  res.setHeader("set-cookie", `session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${SESSION_MS / 1000}${secure}`);
+  json(res, 200, { ok: true });
 }
 
 function json(res, status, body) {
@@ -171,11 +188,9 @@ function readJson(req) {
 async function handle(req, res) {
   const url = new URL(req.url, "http://x");
   let p = url.pathname;
-  if (PROTECTED.has(p) && !authorized(req)) {
-    res.writeHead(401, { "www-authenticate": 'Basic realm="SkyBlock calendar settings"' });
-    return res.end("Password required.");
-  }
+  if (PROTECTED.has(p) && !loggedIn(req)) return json(res, 401, { error: "Log in to change the settings." });
   try {
+    if (p === "/api/login" && req.method === "POST") return await login(req, res);
     if (p === "/api/election") return election ? json(res, 200, election) : json(res, 503, { error: "No election data yet." });
     if (p === "/api/settings" && req.method === "GET") return json(res, 200, { settings: publicSettings(state.settings), leads: LEADS });
     if (p === "/api/settings" && req.method === "PUT") {

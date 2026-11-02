@@ -10,12 +10,15 @@
 .field { display: grid; gap: 4px; margin-bottom: 12px; }
 .field label { color: var(--muted); }
 .field small { color: #777; font-size: 18px; }
-input[type=text], input[type=url] {
+input[type=text], input[type=url], input[type=password] {
   font: 20px var(--font-body); color: var(--fg); background: #000;
   border: 3px solid; border-color: #3a3a3a #888 #888 #3a3a3a;
   padding: 4px 8px; width: 100%; min-width: 0;
 }
-input[type=text]:focus, input[type=url]:focus { outline: 2px solid var(--yellow); }
+input[type=text]:focus, input[type=url]:focus, input[type=password]:focus { outline: 2px solid var(--yellow); }
+#loginForm { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+#loginForm input { flex: 1 1 220px; width: auto; }
+#loginStatus { color: var(--red); }
 .check { display: flex; gap: 8px; align-items: center; cursor: pointer; }
 .check input, .ev-row input[type=checkbox] { accent-color: var(--green); width: 18px; height: 18px; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 4px; }
@@ -44,6 +47,16 @@ input[type=text]:focus, input[type=url]:focus { outline: 2px solid var(--yellow)
     <a class="btn" href="./">Back to calendar</a>
   </header>
 
+  <section class="panel" id="login" hidden>
+    <h2>Log in</h2>
+    <form id="loginForm">
+      <input type="password" id="password" autocomplete="current-password" placeholder="Settings password" aria-label="Settings password">
+      <button>Log in</button>
+      <span id="loginStatus" role="status"></span>
+    </form>
+  </section>
+
+  <div class="col" id="app" hidden>
   <section class="panel">
     <h2>Webhook</h2>
     <div class="field">
@@ -75,6 +88,7 @@ input[type=text]:focus, input[type=url]:focus { outline: 2px solid var(--yellow)
     <button type="button" id="clearHook" hidden>Remove webhook</button>
     <span id="status" role="status"></span>
   </section>
+  </div>
 </div>
 
 <script src="skyblock.js"></script>
@@ -86,7 +100,7 @@ let leads = [];
 async function api(method, url, body) {
   const r = await fetch(url, { method, headers: body ? { "content-type": "application/json" } : {}, body: body && JSON.stringify(body) });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || `The server answered ${r.status}.`);
+  if (!r.ok) throw Object.assign(new Error(j.error || `The server answered ${r.status}.`), { status: r.status });
   return j;
 }
 
@@ -166,7 +180,31 @@ for (let x = 0; x < 16; x++) for (let y = 0; y < 16; y++) {
 }
 document.body.style.backgroundImage = `url(${c.toDataURL()})`;
 
-api("GET", "api/settings")
-  .then(j => { leads = j.leads; render(j.settings); })
-  .catch(e => status(`Couldn't load settings: ${e.message}`, false));
+async function load() {
+  try {
+    const j = await api("GET", "api/settings");
+    leads = j.leads;
+    render(j.settings);
+    $("login").hidden = true;
+    $("app").hidden = false;
+  } catch (e) {
+    if (e.status === 401) { $("login").hidden = false; $("app").hidden = true; $("password").focus(); return; }
+    $("app").hidden = false;
+    status(`Couldn't load settings: ${e.message}`, false);
+  }
+}
+
+$("loginForm").onsubmit = async e => {
+  e.preventDefault();
+  $("loginStatus").textContent = "";
+  try {
+    await api("POST", "api/login", { password: $("password").value });
+    $("password").value = "";
+    load();
+  } catch (err) {
+    $("loginStatus").textContent = err.message;
+  }
+};
+
+load();
 </script>

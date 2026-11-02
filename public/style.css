@@ -18,6 +18,7 @@
   --font-body: "VT323", "Consolas", monospace;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   background: var(--bg);
   background-size: 64px 64px;

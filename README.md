@@ -30,7 +30,7 @@ docker compose pull && docker compose up -d
 
 | Variable | Default | What it does |
 | --- | --- | --- |
-| `SETTINGS_PASSWORD` | empty | Password for the settings page (any username). Set this if anyone else can reach the port. |
+| `SETTINGS_PASSWORD` | empty | Password for the settings page, entered on the page's login form. Set this if anyone else can reach the port. In `docker-compose.yml`, write a `$` in the password as `$$`. |
 | `PORT` | `8124` | Port the server listens on inside the container. |
 | `DATA_DIR` | `/data` | Where `state.json` is kept. |
 
