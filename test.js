@@ -28,6 +28,11 @@ assert.strictEqual(validate({ events: { nope: { enabled: true } } }, s).events.n
 const marina = { mayor: { name: "Marina", election: { year: 522 }, perks: [{ name: "Fishing Festival" }] } };
 assert.strictEqual(SB.occurrences(0, Date.UTC(2030, 0, 1), SB.mayorEvents(marina)).length, 12);
 assert.deepStrictEqual(SB.mayorEvents({ mayor: { name: "Paul", election: { year: 522 }, perks: [] } }), []);
+const foxy = n => ({ mayor: { name: "Foxy", election: { year: 522 }, perks: [{ name: "Extra Event", description: `Schedules an extra §b${n}§7 event during the year.` }] } });
+const bonus = SB.occurrences(0, Date.UTC(2030, 0, 1), SB.mayorEvents(foxy("Fishing Festival")));
+assert.strictEqual(bonus.length, 1);
+assert.deepStrictEqual([bonus[0].name, SB.sbDate(bonus[0].start).month, SB.sbDate(bonus[0].start).day, bonus[0].year], ["Bonus Fishing Festival", 5, 22, 523]);
+assert.deepStrictEqual(SB.mayorEvents(foxy("Mining Fiesta")), []);
 
 assert.match(eventMessage({ o: spooky, lead: 10 }, "123").content, /<@&123>/);
 assert.deepStrictEqual(eventMessage({ o: spooky, lead: 10 }, "").allowed_mentions, { parse: [] });

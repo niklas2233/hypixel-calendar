@@ -60,7 +60,13 @@
     if (!m) return [];
     const termStart = resultsAt(m.election.year + 1);
     const perks = [...m.perks, ...(m.minister ? [m.minister.perk] : [])];
-    return perks.some(p => p.name === "Fishing Festival") ? [{ ...FISHING, within: [termStart, termStart + YEAR] }] : [];
+    const within = [termStart, termStart + YEAR], out = [];
+    if (perks.some(p => p.name === "Fishing Festival")) out.push({ ...FISHING, within });
+    // Foxy's Extra Event can be Fishing, Spooky or Mining; only the Fishing one has a known date (Late Summer 22nd).
+    if (perks.some(p => p.name === "Extra Event" && /fishing/i.test(p.description || "")))
+      out.push({ ...FISHING, within, at: [[5, 22, 3, "Bonus Fishing Festival"]] });
+    // ponytail: Jerry's Perkpocalypse festival skipped — mayor rotation order is random and not in the API.
+    return out;
   }
 
   const SB = { EPOCH, DAY, MONTH, YEAR, MONTHS, EVENTS, ALL_TYPES, MC, occurrences, sbDate, ord, resultsAt, mayorEvents };
