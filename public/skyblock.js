@@ -11,7 +11,7 @@
     { id: "zoo",     name: "Traveling Zoo",     color: "var(--yellow)", mc: "e", at: [[3, 1, 3, "Summer Traveling Zoo", "Zoo ☀"], [9, 1, 3, "Winter Traveling Zoo", "Zoo ❄"]] },
     { id: "elect",   name: "Election Results",  short: "Elec. results", color: "var(--red)",    mc: "c", at: [[2, 27, 1]] },
     { id: "booth",   name: "Election Opens",    short: "Elec. opens", color: "var(--red)",    mc: "c", at: [[5, 27, 1]] },
-    { id: "spooky",  name: "Spooky Festival",   short: "Spooky", color: "var(--gold)",   mc: "6", at: [[8, 29, 3]] },
+    { id: "spooky",  name: "Spooky Festival",   short: "Spooky", color: "var(--gold)",   mc: "6", at: [[7, 29, 3]] },
     { id: "jerry",   name: "Season of Jerry",   short: "Jerry", color: "var(--aqua)",   mc: "b", at: [[11, 24, 3]] },
     { id: "newyear", name: "New Year Celebration", short: "New Year", color: "var(--pink)", mc: "d", at: [[11, 29, 3]] },
   ];
